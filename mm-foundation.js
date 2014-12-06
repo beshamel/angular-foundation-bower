@@ -2,7 +2,7 @@
  * angular-mm-foundation
  * http://pineconellc.github.io/angular-foundation/
 
- * Version: 0.5.1 - 2014-11-29
+ * Version: 0.6.0-SNAPSHOT - 2014-12-06
  * License: MIT
  * (c) Pinecone, LLC
  */
@@ -1335,8 +1335,17 @@ angular.module("mm.foundation.offcanvas", [])
             require: '^offCanvasWrap',
             restrict: 'C',
             link: function ($scope, element, attrs, offCanvasWrap) {
-                element.on('click', function () {
-                    offCanvasWrap.hide();
+                element.find('li').on('click', function (e) {
+                    e.stopPropagation();
+                    if (angular.element(this).hasClass('has-submenu')) {
+                        angular.element(this.getElementsByClassName('left-submenu')[0]).addClass('move-right');
+                        angular.element(this.getElementsByClassName('right-submenu')[0]).addClass('move-left');
+                    } else if (angular.element(this).hasClass('back')) {
+                        angular.element(this.parentElement).removeClass('move-right');
+                        angular.element(this.parentElement).removeClass('move-left');
+                    } else {
+                        offCanvasWrap.hide();
+                    }
                 });
             }
         };
