@@ -2,11 +2,11 @@
  * angular-mm-foundation
  * http://pineconellc.github.io/angular-foundation/
 
- * Version: 0.6.0-SNAPSHOT - 2014-12-19
+ * Version: 0.6.0-SNAPSHOT - 2015-02-06
  * License: MIT
  * (c) Pinecone, LLC
  */
-angular.module("mm.foundation", ["mm.foundation.tpls", "mm.foundation.accordion","mm.foundation.alert","mm.foundation.bindHtml","mm.foundation.buttons","mm.foundation.position","mm.foundation.mediaQueries","mm.foundation.dropdownToggle","mm.foundation.interchange","mm.foundation.transition","mm.foundation.modal","mm.foundation.offcanvas","mm.foundation.pagination","mm.foundation.tooltip","mm.foundation.popover","mm.foundation.progressbar","mm.foundation.rating","mm.foundation.tabs","mm.foundation.topbar","mm.foundation.tour","mm.foundation.typeahead"]);
+angular.module("mm.foundation", ["mm.foundation.tpls", "mm.foundation.accordion","mm.foundation.alert","mm.foundation.bindHtml","mm.foundation.buttons","mm.foundation.position","mm.foundation.mediaQueries","mm.foundation.stylesheets","mm.foundation.dropdownToggle","mm.foundation.interchange","mm.foundation.transition","mm.foundation.modal","mm.foundation.offcanvas","mm.foundation.pagination","mm.foundation.tooltip","mm.foundation.popover","mm.foundation.progressbar","mm.foundation.rating","mm.foundation.tabs","mm.foundation.topbar","mm.foundation.tour","mm.foundation.typeahead"]);
 angular.module("mm.foundation.tpls", ["template/accordion/accordion-group.html","template/accordion/accordion.html","template/alert/alert.html","template/modal/backdrop.html","template/modal/window.html","template/pagination/pager.html","template/pagination/pagination.html","template/tooltip/tooltip-html-unsafe-popup.html","template/tooltip/tooltip-popup.html","template/popover/popover.html","template/progressbar/bar.html","template/progressbar/progress.html","template/progressbar/progressbar.html","template/rating/rating.html","template/tabs/tab.html","template/tabs/tabset.html","template/topbar/has-dropdown.html","template/topbar/toggle-top-bar.html","template/topbar/top-bar-dropdown.html","template/topbar/top-bar-section.html","template/topbar/top-bar.html","template/tour/tour.html","template/typeahead/typeahead-match.html","template/typeahead/typeahead-popup.html"]);
 angular.module('mm.foundation.accordion', [])
 
@@ -393,6 +393,78 @@ angular.module("mm.foundation.mediaQueries", [])
     }]);
 
 /*
+ * stylesheets - Manipulate sheets in style
+ * @example:
+
+    function(stylesheetFactory) {
+        var element = angular.element(document.head).find('styles');
+        stylesheetFactory(element).css('#myid:before', {
+            'background-color': 'red',
+            width: '500px'
+        });
+    }
+ */
+angular.module('mm.foundation.stylesheets', [])
+
+.factory('stylesheetFactory', ['$document', function ($document) {
+    var rulesAsTextContent = function(rules) {
+        var textContent = '';
+        for (var selector in rules) {
+          var props = rules[selector];
+          textContent += selector + ' {\n';
+            for (var prop in props) {
+              textContent += '\t' + prop + ': ' + props[prop] + ';\n';
+            }
+          textContent += '}\n';
+        }
+        return textContent.slice(0, -1);
+    };
+    return function Stylesheet(element) {
+      var $head = angular.element($document[0].querySelector('head'));
+      if (!element) {
+        element = $document[0].createElement('style');
+        element = angular.element(element);
+      }
+      var currentContent = element.text();
+      var write = function(textContent) {
+        if (textContent !== currentContent) {
+          currentContent = textContent;
+          element.text(textContent);
+          if (currentContent === '') {
+            element.remove();
+          }
+          else if (!$head[0].contains(element[0])) {
+            $head.append(element);
+          }
+        }
+      };
+
+      var rules = {};
+      return {
+        element: function() { return element; },
+        css: function(selector, content) {
+          var exists = selector in rules;
+          if (typeof content === 'undefined') {
+            return exists ? rules[selector] : null;
+          }
+          if (!exists || content != rules[selector]) {
+            if (content === null) {
+              delete rules[selector];
+            }
+            else {
+              rules[selector] = content;
+            }
+          }
+          return this;
+        },
+        sync: function() {
+          write(rulesAsTextContent(rules));
+        }
+      };
+    };
+  }]);
+
+/*
  * dropdownToggle - Provides dropdown menu functionality
  * @restrict class or attribute
  * @example:
@@ -404,7 +476,7 @@ angular.module("mm.foundation.mediaQueries", [])
      </li>
    </ul>
  */
-angular.module('mm.foundation.dropdownToggle', [ 'mm.foundation.position', 'mm.foundation.mediaQueries' ])
+angular.module('mm.foundation.dropdownToggle', [ 'mm.foundation.position', 'mm.foundation.mediaQueries', 'mm.foundation.stylesheets' ])
 
 .controller('DropdownToggleController', ['$scope', '$attrs', 'mediaQueries', function($scope, $attrs, mediaQueries) {
   this.small = function() {
@@ -412,7 +484,7 @@ angular.module('mm.foundation.dropdownToggle', [ 'mm.foundation.position', 'mm.f
   };
 }])
 
-.directive('dropdownToggle', ['$document', '$window', '$location', '$position', function ($document, $window, $location, $position) {
+.directive('dropdownToggle', ['$document', '$window', '$location', '$position', 'stylesheetFactory', function ($document, $window, $location, $position, stylesheetFactory) {
   var openElement = null,
       closeMenu   = angular.noop;
   return {
@@ -424,6 +496,7 @@ angular.module('mm.foundation.dropdownToggle', [ 'mm.foundation.position', 'mm.f
     link: function(scope, element, attrs, controller) {
       var parent = element.parent();
       var dropdown = angular.element($document[0].querySelector(scope.dropdownToggle));
+      var sheet = stylesheetFactory();
 
       var parentHasDropdown = function() {
         return parent.hasClass('has-dropdown');
@@ -482,6 +555,16 @@ angular.module('mm.foundation.dropdownToggle', [ 'mm.foundation.position', 'mm.f
           if (parentHasDropdown()) {
             parent.addClass('hover');
           }
+
+          var dropdownLeft = $position.offset(dropdown).left;
+          var pipWidth = parseInt(
+            getComputedStyle(dropdown[0], '::before').getPropertyValue('width'), 10
+          );
+          var pipLeft = offset.left - dropdownLeft + Math.round((offset.width - pipWidth) / 2);
+          sheet
+            .css('#' + dropdown[0].id + '::before', {left: pipLeft + 'px'})
+            .css('#' + dropdown[0].id + '::after', {left: pipLeft - 1 + 'px'})
+            .sync();
 
           openElement = element;
 
