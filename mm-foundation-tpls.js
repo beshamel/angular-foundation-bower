@@ -2,7 +2,7 @@
  * angular-mm-foundation
  * http://pineconellc.github.io/angular-foundation/
 
- * Version: 0.6.0-SNAPSHOT - 2015-02-06
+ * Version: 0.6.0-SNAPSHOT - 2015-02-08
  * License: MIT
  * (c) Pinecone, LLC
  */
@@ -518,8 +518,10 @@ angular.module('mm.foundation.dropdownToggle', [ 'mm.foundation.position', 'mm.f
           dropdown.css('display', 'block'); // We display the element so that offsetParent is populated
           var offset = $position.offset(element);
           var parentOffset = $position.offset(angular.element(dropdown[0].offsetParent));
+          var top = offset.top - parentOffset.top + offset.height;
+
           var css = {
-            top: offset.top - parentOffset.top + offset.height + 'px'
+            top: top + 'px'
           };
 
           if (controller.small()) {
@@ -535,6 +537,18 @@ angular.module('mm.foundation.dropdownToggle', [ 'mm.foundation.position', 'mm.f
           }
           dropdown.css(css);
           var dropdownWidth = dropdown.prop('offsetWidth');
+          var dropdownHeight = dropdown.prop('offsetHeight');
+
+          var bottomThreshold = dropdown[0].offsetParent.offsetHeight - dropdownHeight - 8;
+          if (top > bottomThreshold) {
+            top = top - dropdownHeight - offset.height;
+            dropdown.addClass('drop-top');
+            css.top = top + 'px';
+          }
+          else
+          {
+            dropdown.removeClass('drop-top');
+          }
 
           if (controller.small()) {
             css.left = Math.max((parentOffset.width - dropdownWidth) / 2, 8) + 'px';
@@ -573,9 +587,17 @@ angular.module('mm.foundation.dropdownToggle', [ 'mm.foundation.position', 'mm.f
 
           var shouldUnbind = true;
           closeMenu = function (event) {
-            if (event && event.type == 'resize' && event.target.innerWidth == windowWidth) {
-              return;
+            if (event && event.type == 'resize')
+            {
+              if (event.target.innerWidth == windowWidth) {
+                return;
+              }
+              else
+              {
+                shouldUnbind = true;
+              }
             }
+
             if (shouldUnbind) {
               $document.off('click', closeMenu);
               angular.element($window).unbind('resize', closeMenu);
@@ -619,6 +641,7 @@ angular.module('mm.foundation.dropdownToggle', [ 'mm.foundation.position', 'mm.f
       }
 
       scope.$watch('$location.path', function() {
+        shouldUnbind = true;
         closeMenu();
       });
 
